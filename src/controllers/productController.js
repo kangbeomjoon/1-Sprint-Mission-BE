@@ -1,5 +1,3 @@
-// productController.js
-
 import * as productService from '../services/productService.js';
 import {
   ValidationError,
