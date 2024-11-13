@@ -1,64 +1,30 @@
-// articleRoutes.js
-
-import express from 'express';
-import { body, param, query } from 'express-validator';
-import { asyncHandler } from '../utils/asyncHandler.js';
-import { validate } from '../middlewares/validate.js';
-import * as articleController from '../controllers/articleController.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
-
+const express = require('express');
+const {
+  createArticle,
+  getArticles,
+  getArticleById,
+  updateArticle,
+  deleteArticle,
+} = require('../controllers/articleController');
+const upload = require('../utils/multer');
+const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
 
-router
-  .route('/')
-  .post(
-    authMiddleware,
-    [
-      body('title').isString().isLength({ min: 1, max: 100 }),
-      body('content').isString().notEmpty(),
-    ],
-    validate,
-    asyncHandler(articleController.createArticle)
-  )
-  .get(
-    [
-      query('page').optional().isInt({ min: 1 }),
-      query('limit').optional().isInt({ min: 1, max: 100 }),
-    ],
-    validate,
-    asyncHandler(articleController.getArticles)
-  );
+// 게시글 생성 - 로그인한 사용자만 가능 (authMiddleware를 넣어놨기 때문. authMiddleware에 토큰을 사용하여 로그인한 사용자만 접근할 수 있도록 해놨기 때문), 이미지 최대 3개
+router.post('/', authMiddleware, upload.array('images', 3), createArticle);
 
-router
-  .route('/:id')
-  .get(
-    [param('id').isInt({ min: 1 })],
-    validate,
-    asyncHandler(articleController.getArticleById)
-  )
-  .put(
-    authMiddleware,
-    [
-      param('id').isInt({ min: 1 }),
-      body('title').optional().isString().isLength({ min: 1, max: 100 }),
-      body('content').optional().isString().notEmpty(),
-    ],
-    validate,
-    asyncHandler(articleController.updateArticle)
-  )
-  .delete(
-    authMiddleware,
-    [param('id').isInt({ min: 1 })],
-    validate,
-    asyncHandler(articleController.deleteArticle)
-  );
+// 모든 게시글 목록 조회
+router.get('/', getArticles);
 
-router.post(
-  '/:id/like',
-  authMiddleware,
-  [param('id').isInt({ min: 1 })],
-  validate,
-  asyncHandler(articleController.toggleLike)
-);
+// 특정 게시글 조회
+router.get('/:id', getArticleById);
 
-export default router;
+// 게시글 수정 - 로그인한 사용자만 가능 (authMiddleware를 넣어놨기 때문. authMiddleware에 토큰을 사용하여 로그인한 사용자만 접근할 수 있도록 해놨기 때문)
+router.patch('/:id', authMiddleware, upload.array('images', 3), updateArticle);
+
+// 게시글 삭제 - 로그인한 사용자만 가능 (authMiddleware를 넣어놨기 때문. authMiddleware에 토큰을 사용하여 로그인한 사용자만 접근할 수 있도록 해놨기 때문)
+router.delete('/:id', authMiddleware, deleteArticle);
+
+module.exports = router;
+
+// 맨 뒤에 나오는 함수 이름은 articleController 파일에서 가져온 함수

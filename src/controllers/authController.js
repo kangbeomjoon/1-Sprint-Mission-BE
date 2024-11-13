@@ -1,76 +1,50 @@
-// authController.js
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-import * as authService from '../services/authService.js';
-import { UnauthorizedError } from '../middlewares/errorMiddleware.js';
-
-export const signUp = async (req, res, next) => {
+// 회원가입
+exports.signUp = async (req, res, next) => {
+  const { email, password, nickname } = req.body; // 이메일, 비밀번호, 닉네임
   try {
-    // 요청 시작 로그
-    console.log('signUp 요청 시작:', req.body);
-
-    const user = await authService.signUp(req.body);
-
-    // 성공 로그
-    console.log('signUp 성공:', user);
-
-    res.status(201).json({ message: '회원가입이 완료되었습니다.', user });
-  } catch (error) {
-    // 에러 로그
-    console.error('signUp 에러:', error);
-    next(error); // 에러를 에러 핸들러로 전달
-  }
-};
-
-export const signIn = async (req, res, next) => {
-  try {
-    // 요청 시작 로그
-    console.log('signIn 요청 시작:', req.body);
-
-    const { email, password } = req.body;
-    const result = await authService.signIn(email, password);
-
-    if (!result) {
-      // 실패 로그
-      console.error('signIn 실패: 인증 실패');
-      throw new UnauthorizedError('이메일 또는 비밀번호가 올바르지 않습니다.');
-    }
-
-    // 성공 로그
-    console.log('signIn 성공:', result);
-
-    res.json({
-      message: '로그인 성공',
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
+    const hashedPassword = await bcrypt.hash(password, 10); // 비밀번호 해시화하는 로직 (bcrypts는 패키지임 설치필요)
+    const user = await prisma.user.create({
+      data: {
+        email, // 가입하는 이메일
+        nickname, // 가입하는 닉네임
+        password: hashedPassword, // 사용자는 비밀번호를 입력해서 가입했지만 => 데이터베이스에는 해시화 되어 저장되게 변환 (왜? 해시화 안하면 데이터베이스 유출되면 내 비밀번호는 그대로 털림)
+      },
     });
+
+    // JWT 토큰 발급
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    }); // 유효기간 1시간 토큰 생성
+
+    // accessToken과 nickname 반환
+    res.status(201).json({ accessToken: token, nickname: user.nickname }); // 생성된 토큰과 닉네임 반환
   } catch (error) {
-    // 에러 로그
-    console.error('signIn 에러:', error);
-    next(error);
+    next(error); // 에러가 있으면 다음 미들웨어로 전달
   }
 };
 
-export const refreshToken = async (req, res, next) => {
+// 로그인
+exports.signIn = async (req, res, next) => {
+  const { email, password } = req.body; // 이메일과 비밀번호 가져오기
   try {
-    // 요청 시작 로그
-    console.log('refreshToken 요청 시작:', req.body);
-
-    const { refreshToken } = req.body;
-    const result = await authService.refreshToken(refreshToken);
-
-    if (!result) {
-      // 실패 로그
-      console.error('refreshToken 실패: 유효하지 않은 토큰');
-      throw new UnauthorizedError('유효하지 않은 리프레시 토큰입니다.');
+    const user = await prisma.user.findUnique({ where: { email } }); // 이메일로 사용자 검색
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: 'Invalid credentials' }); // 사용자 없거나 비밀번호 틀릴 경우 에러 메시지 반환
     }
 
-    // 성공 로그
-    console.log('refreshToken 성공:', result);
+    // JWT 토큰 발급
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    }); // 유효기간 1시간 토큰 생성
 
-    res.json(result);
+    // accessToken과 nickname 반환
+    res.status(200).json({ accessToken: token, nickname: user.nickname }); // 생성된 토큰과 닉네임 반환
   } catch (error) {
-    // 에러 로그
-    console.error('refreshToken 에러:', error);
-    next(error);
+    next(error); // 에러가 있으면 다음 미들웨어로 전달
   }
 };

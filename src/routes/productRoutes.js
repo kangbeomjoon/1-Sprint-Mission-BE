@@ -1,69 +1,29 @@
-// productRoutes.js
-
-import express from "express";
-import { body, param, query } from "express-validator";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { validate } from "../middlewares/validate.js";
-import * as productController from "../controllers/productController.js";
-import authMiddleware from "../middlewares/authMiddleware.js";
-
+const express = require('express');
+const {
+  createProduct,
+  getProducts,
+  getProductById,
+  updateProduct,
+  deleteProduct,
+} = require('../controllers/productController');
+const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
 
-router
-  .route("/")
-  .post(
-    authMiddleware,
-    [
-      body("name").isString().isLength({ min: 1, max: 100 }),
-      body("description").isString().notEmpty(),
-      body("price").isFloat({ min: 0 }),
-      body("image").isURL(),
-    ],
-    validate,
-    asyncHandler(productController.createProduct)
-  )
-  .get(
-    [
-      query("page").optional().isInt({ min: 1 }),
-      query("limit").optional().isInt({ min: 1, max: 100 }),
-      query("order").optional().isIn(["recent", "price"]),
-    ],
-    validate,
-    asyncHandler(productController.getProducts)
-  );
+// 상품 등록 - 로그인한 사용자만 가능 (authMiddleware를 넣어놨기 때문. authMiddleware에 토큰을 사용하여 로그인한 사용자만 접근할 수 있도록 해놨기 때문)
+router.post('/', authMiddleware, createProduct);
 
-router
-  .route("/:id")
-  .get(
-    [param("id").isInt({ min: 1 })],
-    validate,
-    asyncHandler(productController.getProductById)
-  )
-  .put(
-    authMiddleware,
-    [
-      param("id").isInt({ min: 1 }),
-      body("name").optional().isString().isLength({ min: 1, max: 100 }),
-      body("description").optional().isString().notEmpty(),
-      body("price").optional().isFloat({ min: 0 }),
-      body("image").optional().isURL(),
-    ],
-    validate,
-    asyncHandler(productController.updateProduct)
-  )
-  .delete(
-    authMiddleware,
-    [param("id").isInt({ min: 1 })],
-    validate,
-    asyncHandler(productController.deleteProduct)
-  );
+// 모든 상품 목록 조회
+router.get('/', getProducts);
 
-router.post(
-  "/:id/like",
-  authMiddleware,
-  [param("id").isInt({ min: 1 })],
-  validate,
-  asyncHandler(productController.toggleLike)
-);
+// 특정 상품 조회
+router.get('/:productId', getProductById);
 
-export default router;
+// 상품 수정 - 로그인한 사용자만 가능 (authMiddleware를 넣어놨기 때문. authMiddleware에 토큰을 사용하여 로그인한 사용자만 접근할 수 있도록 해놨기 때문)
+router.patch('/:productId', authMiddleware, updateProduct);
+
+// 상품 삭제 - 로그인한 사용자만 가능 (authMiddleware를 넣어놨기 때문. authMiddleware에 토큰을 사용하여 로그인한 사용자만 접근할 수 있도록 해놨기 때문)
+router.delete('/:productId', authMiddleware, deleteProduct);
+
+module.exports = router;
+
+// 맨 뒤에 나오는 함수 이름은 productController 파일에서 가져온 함수
