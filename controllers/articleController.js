@@ -12,7 +12,7 @@ exports.createArticle = async (req, res, next) => {
       data: {
         title, // 제목
         content, // 내용
-        tags, // 태그들
+        tags, // 태그
         image: imagePaths, // 이미지들
         userId: req.user.id, // 현재 사용자 ID로 userId 설정
       },
