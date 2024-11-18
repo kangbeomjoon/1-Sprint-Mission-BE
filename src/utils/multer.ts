@@ -1,10 +1,11 @@
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { Request } from 'express'; // Express 타입 추가
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, "../uploads");
+    const uploadPath = path.join(__dirname, '../uploads');
 
     // 업로드 폴더가 존재하지 않으면 생성
     if (!fs.existsSync(uploadPath)) {
@@ -18,9 +19,13 @@ const storage = multer.diskStorage({
   },
 });
 
-const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (
+  req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
   const ext = path.extname(file.originalname).toLowerCase();
-  if (ext !== ".jpg" && ext !== ".jpeg" && ext !== ".png") {
+  if (ext !== '.jpg' && ext !== '.jpeg' && ext !== '.png') {
     cb(null, false);
   } else {
     cb(null, true);
@@ -34,4 +39,3 @@ const upload = multer({
 });
 
 export default upload;
-
